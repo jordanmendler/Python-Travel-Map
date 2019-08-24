@@ -1,8 +1,10 @@
 # Python-Travel-Map
 
-# Step 1: python3 0_clean_data.py
-# Step 2: sort Travel_Map_Cleaned.csv > Travel_Map_Sorted.csv
-# Step 3: python3 1_split_trim_plot.py
+# Step 1: unzip Travel_Map_All.csv.gz
+# Step 2: run 'python3 0_clean_data.py'
+# Step 3: run 'sort Travel_Map_Cleaned.csv > Travel_Map_Sorted.csv'
+# Step 4: create a folder named 'datasets'
+# Step 5: run 'python3 1_split_trim_plot.py'
 
 
 #Don't split files: 16 min
