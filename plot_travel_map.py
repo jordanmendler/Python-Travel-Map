@@ -206,13 +206,11 @@ layout = go.Layout(
         bearing=0,
         center=go.layout.mapbox.Center(lat=45, lon=5),
         pitch=0,
-        zoom=1.25,
+        zoom=1.6,
     ),
 )
 
-# FIXME: Remove white outline on HTML
-# Center map properly
-# Proper sizing for export
+# FIXME:Proper sizing for image export
 
 
 outdir = "./Maps/"
