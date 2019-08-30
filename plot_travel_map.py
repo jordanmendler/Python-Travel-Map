@@ -204,14 +204,11 @@ layout = go.Layout(
     mapbox=go.layout.Mapbox(
         accesstoken=mapbox_access_token,
         bearing=0,
-        center=go.layout.mapbox.Center(lat=45, lon=5),
+        center=go.layout.mapbox.Center(lat=45, lon=10),
         pitch=0,
-        zoom=1.6,
+        zoom=1.5,
     ),
 )
-
-# FIXME:Proper sizing for image export
-
 
 outdir = "./Maps/"
 outfile = outdir + "Travel-Map-" + datetime.now().strftime("%Y-%m-%d-%s")
@@ -222,7 +219,8 @@ if not os.path.exists(outdir):
 # Plot everything
 fig = go.Figure(data=data, layout=layout)
 py.offline.plot(fig, filename=outfile + ".html")
-fig.write_image(outfile + ".png", height=1950, width=2400)
+# fig.write_image(outfile + ".png", height=1300, width=1970)
+fig.write_image(outfile + ".png", height=1200, width=1450)
 
 # Update symlink
 if os.path.exists(latest + ".html"):
