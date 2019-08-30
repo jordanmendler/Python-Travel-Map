@@ -64,9 +64,20 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                         pass
 
             elif ".json" in f:
-                # FIXME: Support JSON input
-                print("JSON not yet supported")
-                sys.exit(1)
+                regex = '"coordinates" : \[ ([+-]?\d+?\.\d+), ([+-]?\d+?\.\d+) \],'
+                for line in infile:
+                    for match in re.findall(regex, line):
+                        try:
+                            lng = float(match[0])
+                            lat = float(match[1])
+
+                            if validCoords(lat, lng):
+                                count += 1
+                                writeCSV.writerow([lat, lng])
+                        except ValueError:
+                            skipped += 1
+                            # print("\tSkipped:, "lat", ",", lng)
+                            pass
 
             elif ".kml" in f:
                 regex = "<gx:coord>([+-]?\d+?\.\d+) ([+-]?\d+?\.\d+) 0</gx:coord>"
