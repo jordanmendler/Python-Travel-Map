@@ -1,0 +1,5 @@
+# Files for git to ignore
+**/node_modules/**
+**/package-lock.json
+tmp/**
+.mypy_cache/**

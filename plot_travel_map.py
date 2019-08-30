@@ -1,5 +1,16 @@
 #!/usr/bin/python3
 
+import re
+import json
+import os
+import tempfile
+import shutil
+from datetime import datetime
+import pandas as pd
+import plotly.graph_objs as go
+import plotly as py
+import math
+import csv
 import sys
 
 # Make sure input file was specified
@@ -8,19 +19,10 @@ if len(sys.argv) < 2:
     print("Example: ./travel_map_plot.py Travel_Map_All.csv ")
     sys.exit(1)
 
-import csv
-import math
-import plotly as py
-import plotly.graph_objs as go
-import pandas as pd
-from datetime import datetime
-import shutil
-import tempfile
-import os
-import json
-import re
 
 # Functions
+
+
 def validCoords(lat, lng):
     if lat < 85 and lat > -60 and lng <= 180 and lng >= -180:
         return True
@@ -186,31 +188,41 @@ data = [
 ]
 layout = go.Layout(
     autosize=True,
+    margin={"pad": 0, "l": 0, "r": 0, "t": 0, "b": 0},
     hovermode="closest",
     mapbox=go.layout.Mapbox(
         accesstoken=mapbox_access_token,
         bearing=0,
-        center=go.layout.mapbox.Center(lat=25, lon=140),
+        center=go.layout.mapbox.Center(lat=45, lon=5),
         pitch=0,
-        zoom=1.2,
+        zoom=1.25,
     ),
 )
 
+# FIXME: Remove white outline on HTML
+# Center map properly
+# Proper sizing for export
+
+
 outdir = "./Maps/"
-outfile = outdir + "Travel-Map-" + datetime.now().strftime("%Y-%m-%d-%s") + ".html"
-latest = "Travel-Map-latest.html"
+outfile = outdir + "Travel-Map-" + datetime.now().strftime("%Y-%m-%d-%s")
+latest = "Travel-Map-latest"
 if not os.path.exists(outdir):
     os.mkdir(outdir)
 
 # Plot everything
 fig = go.Figure(data=data, layout=layout)
-py.offline.plot(fig, filename=outfile)
+py.offline.plot(fig, filename=outfile + ".html")
+fig.write_image(outfile + ".png", height=1950, width=2400)
 
 # Update symlink
-if os.path.exists(latest):
-    os.unlink(latest)
+if os.path.exists(latest + ".html"):
+    os.unlink(latest + ".html")
+os.symlink(outfile + ".html", latest + ".html")
 
-os.symlink(outfile, latest)
+if os.path.exists(latest + ".png"):
+    os.unlink(latest + ".png")
+os.symlink(outfile + ".png", latest + ".png")
 
 # Clear the temporary directory
 shutil.rmtree(tmp_dir)
