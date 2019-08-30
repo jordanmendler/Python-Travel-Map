@@ -12,10 +12,10 @@
 #      REVISION:  ---
 #===============================================================================
 
-DIR="~/Dowwnloads/Takeout/Google Photos"
+DIR="~/Downloads/Takeout/Google Photos"
 
 # Remove all media files
-for filetype in mp4 jpg mov png ; do
+for filetype in mp4 jpg mov png gif ; do
     find "$DIR" -type filetype -iname *.$i -exec rm -f "{}" \; ;
 done
 
