@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import re
+import glob
 import json
 import os
 import tempfile
@@ -37,14 +38,22 @@ lines_per_file = 10000
 tmp_dir = str(tempfile.mkdtemp())
 
 # Clean and merge input files
-files = sys.argv
-files.pop(0)
+files = glob.glob(sys.argv[1] + "/**/*.json", recursive=True)
+files = list(set(files + glob.glob(sys.argv[1] + "/**/*.kml", recursive=True)))
+files = list(set(files + glob.glob(sys.argv[1] + "/**/*.csv", recursive=True)))
+files = list(set(files + glob.glob(sys.argv[1] + "/*.json")))
+files = list(set(files + glob.glob(sys.argv[1] + "/*.kml")))
+files = list(set(files + glob.glob(sys.argv[1] + "/*.csv")))
 
 with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
     writeCSV = csv.writer(outfile, delimiter=",")
+    fileCount = 0
 
     for f in files:
-        print("Processing " + f)
+        fileCount += 1
+        print(
+            "Processing " + f + " (" + str(fileCount) + " of " + str(len(files)) + ")"
+        )
         with open(f) as infile:
             count = 0
             skipped = 0
@@ -64,9 +73,50 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                         pass
 
             elif ".json" in f:
-                regex = '"coordinates" : \[ ([+-]?\d+?\.\d+), ([+-]?\d+?\.\d+) \],'
-                for line in infile:
-                    for match in re.findall(regex, line):
+                data = infile.read()
+
+                # Regex Style 1: coordinate pairs
+                regex = '"coordinates" : \[ ([+-]?\d+?\.\d+), ([+-]?\d+?\.\d+) \]'
+                matches = re.findall(regex, data)
+                for match in re.findall(regex, data):
+                    try:
+                        lng = float(match[0])
+                        lat = float(match[1])
+
+                        if validCoords(lat, lng):
+                            count += 1
+                            writeCSV.writerow([lat, lng])
+                    except ValueError:
+                        skipped += 1
+                        # print("\tSkipped:, "lat", ",", lng)
+                        pass
+
+                # Regex Style 2: latitude comes first
+                data = data.replace("\n", "")
+                data = data.replace("\r", "")
+                if data.find("latitude") < data.find("longitude"):
+                    regex = (
+                        "latitude.*: ([+-]?\d+?\.\d+),.*longitude.*: ([+-]?\d+?\.\d+)"
+                    )
+                    for match in re.findall(regex, data.replace("\n", "")):
+                        try:
+                            lng = float(match[0])
+                            lat = float(match[1])
+
+                            if validCoords(lat, lng):
+                                count += 1
+                                writeCSV.writerow([lat, lng])
+                        except ValueError:
+                            skipped += 1
+                            # print("\tSkipped:, "lat", ",", lng)
+                            pass
+                # Regex Style 3: longitude comes first
+                else:
+                    regex = (
+                        "longitude.*: ([+-]?\d+?\.\d+),.*latitude.*: ([+-]?\d+?\.\d+)"
+                    )
+                    matches = re.findall(regex, data)
+                    for match in re.findall(regex, data):
                         try:
                             lng = float(match[0])
                             lat = float(match[1])
@@ -219,8 +269,8 @@ if not os.path.exists(outdir):
 # Plot everything
 fig = go.Figure(data=data, layout=layout)
 py.offline.plot(fig, filename=outfile + ".html")
-# fig.write_image(outfile + ".png", height=1300, width=1970)
 fig.write_image(outfile + ".png", height=1200, width=1450)
+fig.write_image(outfile + ".square.png", height=1450, width=1450)
 
 # Update symlink
 if os.path.exists(latest + ".html"):

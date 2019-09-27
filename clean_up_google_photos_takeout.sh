@@ -15,7 +15,7 @@
 DIR=~/Downloads/Takeout/Google\ Photos/
 
 # Remove all media files
-for filetype in mp4 jpg jpeg mov png gif ; do
+for filetype in heic mp4 jpg jpeg mov png gif ; do
     find "$DIR" -type f -iname \*.$filetype -exec rm -f "{}" \;
 done
 
