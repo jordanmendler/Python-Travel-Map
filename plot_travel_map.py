@@ -94,14 +94,14 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                 # Regex Style 2: latitude comes first
                 data = data.replace("\n", "")
                 data = data.replace("\r", "")
+                data = data.replace("\t", "")
+                data = data.replace(" ", "")
                 if data.find("latitude") < data.find("longitude"):
-                    regex = (
-                        "latitude.*: ([+-]?\d+?\.\d+),.*longitude.*: ([+-]?\d+?\.\d+)"
-                    )
-                    for match in re.findall(regex, data.replace("\n", "")):
+                    regex = '"latitude":([+-]?\d+?\.\d+)\,"longitude":([+-]?\d+?\.\d+)'
+                    for match in re.findall(regex, data):
                         try:
-                            lng = float(match[0])
-                            lat = float(match[1])
+                            lat = float(match[0])
+                            lng = float(match[1])
 
                             if validCoords(lat, lng):
                                 count += 1
@@ -112,9 +112,7 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                             pass
                 # Regex Style 3: longitude comes first
                 else:
-                    regex = (
-                        "longitude.*: ([+-]?\d+?\.\d+),.*latitude.*: ([+-]?\d+?\.\d+)"
-                    )
+                    regex = '"longitude":([+-]?\d+?\.\d+)\,"latitude":([+-]?\d+?\.\d+)'
                     matches = re.findall(regex, data)
                     for match in re.findall(regex, data):
                         try:
@@ -130,7 +128,7 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                             pass
 
             elif ".kml" in f:
-                regex = "<gx:coord>([+-]?\d+?\.\d+) ([+-]?\d+?\.\d+) 0</gx:coord>"
+                regex = "([+-]?\d+?\.\d+)[\s\,]([+-]?\d+?\.\d+)[\s\,]\d+"
                 for line in infile:
                     for match in re.findall(regex, line):
                         try:
@@ -164,11 +162,10 @@ os.system(
 )
 
 # Split into multiple files
-newfile = None
-file_num = 0
 my_files = []
 with open(tmp_dir + "/Travel_Map_Sorted.csv") as infile:
-    for lineno, line in enumerate(infile, -1):
+    newfile = None
+    for lineno, line in enumerate(infile):
         if lineno >= 0:
             if lineno % lines_per_file == 0:
                 if newfile:
@@ -178,7 +175,8 @@ with open(tmp_dir + "/Travel_Map_Sorted.csv") as infile:
                 my_files.append(new_filename)
                 newfile = open(new_filename, "w")
             newfile.write(line)
-
+    if newfile:
+        newfile.close()
 
 # Trim points by density(distance between two closest points)
 countOrig = 0
