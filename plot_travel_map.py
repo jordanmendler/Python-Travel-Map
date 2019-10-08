@@ -17,13 +17,13 @@ import sys
 # Make sure input file was specified
 if len(sys.argv) < 2:
     print("Please specify input file")
-    print("Example: ./travel_map_plot.py Travel_Map_All.csv ")
+    print("Examples:")
+    print("\t./travel_map_plot.py Travel_Map_All.csv ")
+    print("\t./travel_map_plot.py ~/Takeout/")
     sys.exit(1)
 
 
 # Functions
-
-
 def validCoords(lat, lng):
     if lat < 85 and lat > -60 and lng <= 180 and lng >= -180:
         return True
@@ -31,32 +31,52 @@ def validCoords(lat, lng):
         return False
 
 
+def updateConsole(f, fileCount, numFiles, skipped, invalid, count):
+    sys.stdout.write("\33[2K")
+    sys.stdout.write(
+        "\rProcessed:%d Invalid:%d Skipped:%d\t%s (%d of %d)"
+        % (count, invalid, skipped, os.path.basename(f), fileCount, numFiles)
+    )
+
+
+#    sys.stdout.flush()
+
+
+timestamp = datetime.now().strftime("%Y-%m-%d-%s")
+
 # Split sorted files into smaller files with no more than 10000 lines each
 lines_per_file = 10000
 
 # Make a cache directory
-tmp_dir = str(tempfile.mkdtemp())
+tmp_dir = str(tempfile.mkdtemp(".tmp", "travel-map-" + timestamp + "-"))
 
 # Clean and merge input files
-files = glob.glob(sys.argv[1] + "/**/*.json", recursive=True)
-files = list(set(files + glob.glob(sys.argv[1] + "/**/*.kml", recursive=True)))
-files = list(set(files + glob.glob(sys.argv[1] + "/**/*.csv", recursive=True)))
-files = list(set(files + glob.glob(sys.argv[1] + "/*.json")))
-files = list(set(files + glob.glob(sys.argv[1] + "/*.kml")))
-files = list(set(files + glob.glob(sys.argv[1] + "/*.csv")))
+files = []
 
-with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
+if os.path.isdir(sys.argv[1]):
+    files = list(set(files + glob.glob(sys.argv[1] + "/**/*.json", recursive=True)))
+    files = list(set(files + glob.glob(sys.argv[1] + "/**/*.kml", recursive=True)))
+    files = list(set(files + glob.glob(sys.argv[1] + "/**/*.csv", recursive=True)))
+    files = list(set(files + glob.glob(sys.argv[1] + "/*.json")))
+    files = list(set(files + glob.glob(sys.argv[1] + "/*.kml")))
+    files = list(set(files + glob.glob(sys.argv[1] + "/*.csv")))
+else:
+    files = glob.glob(sys.argv[1])
+
+with open(tmp_dir + "/1_Travel_Map_Cleaned.csv", mode="w") as outfile:
     writeCSV = csv.writer(outfile, delimiter=",")
+    writeInvalidCSV = csv.writer(
+        open(tmp_dir + "/1_Travel_Map_Invalid.csv", mode="w"), delimiter=","
+    )
     fileCount = 0
+    count = 0
+    skipped = 0
+    invalid = 0
 
     for f in files:
         fileCount += 1
-        print(
-            "Processing " + f + " (" + str(fileCount) + " of " + str(len(files)) + ")"
-        )
+
         with open(f) as infile:
-            count = 0
-            skipped = 0
             if ".csv" in f:
                 readCSV = csv.reader(infile, delimiter=",")
                 for row in readCSV:
@@ -67,10 +87,15 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                         if validCoords(lat, lng):
                             writeCSV.writerow([lat, lng])
                             count += 1
+                        else:
+                            writeInvalidCSV.writerow([lat, lng, f])
+                            invalid += 1
                     except ValueError:
                         skipped += 1
-                        # print("\tSkipped:, "lat", ",", lng)
+                        print("Invalid on " + f + ":" + row)
                         pass
+
+                    updateConsole(f, fileCount, len(files), skipped, invalid, count)
 
             elif ".json" in f:
                 data = infile.read()
@@ -86,10 +111,14 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                         if validCoords(lat, lng):
                             count += 1
                             writeCSV.writerow([lat, lng])
+                        else:
+                            writeInvalidCSV.writerow([lat, lng, f])
+                            invalid += 1
                     except ValueError:
                         skipped += 1
-                        # print("\tSkipped:, "lat", ",", lng)
+                        print("Invalid on " + f + ":" + match)
                         pass
+                    updateConsole(f, fileCount, len(files), skipped, invalid, count)
 
                 # Regex Style 2: latitude comes first
                 data = data.replace("\n", "")
@@ -106,10 +135,15 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                             if validCoords(lat, lng):
                                 count += 1
                                 writeCSV.writerow([lat, lng])
+                            else:
+                                writeInvalidCSV.writerow([lat, lng, f])
+                                invalid += 1
                         except ValueError:
                             skipped += 1
-                            # print("\tSkipped:, "lat", ",", lng)
+                            print("Invalid on " + f + ":" + match)
                             pass
+                        updateConsole(f, fileCount, len(files), skipped, invalid, count)
+
                 # Regex Style 3: longitude comes first
                 else:
                     regex = '"longitude":([+-]?\d+?\.\d+)\,"latitude":([+-]?\d+?\.\d+)'
@@ -122,11 +156,15 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                             if validCoords(lat, lng):
                                 count += 1
                                 writeCSV.writerow([lat, lng])
+                            else:
+                                writeInvalidCSV.writerow([lat, lng, f])
+                                invalid += 1
                         except ValueError:
                             skipped += 1
-                            # print("\tSkipped:, "lat", ",", lng)
+                            print("Invalid on " + f + ":" + match)
                             pass
-
+                        updateConsole(f, fileCount, len(files), skipped, invalid, count)
+            # FIXME: KML still broken based on China.kml
             elif ".kml" in f:
                 regex = "([+-]?\d+?\.\d+)[\s\,]([+-]?\d+?\.\d+)[\s\,]\d+"
                 for line in infile:
@@ -138,32 +176,34 @@ with open(tmp_dir + "/Travel_Map_Cleaned.csv", mode="w") as outfile:
                             if validCoords(lat, lng):
                                 count += 1
                                 writeCSV.writerow([lat, lng])
+                            else:
+                                writeInvalidCSV.writerow([lat, lng, f])
+                                invalid += 1
                         except ValueError:
                             skipped += 1
-                            # print("\tSkipped:, "lat", ",", lng)
+                            print("Invalid on " + f + ":" + match)
                             pass
+                        updateConsole(f, fileCount, len(files), skipped, invalid, count)
             else:
                 print(
                     "Please only in .csv or .json files. Unrecognized filetype for " + f
                 )
                 sys.exit(1)
-            print("\tSkipped ", skipped)
-            print("\tProcessed ", count)
 
 
 # Sort points
 # FIXME: This can be merged with prior step
 os.system(
-    "sort "
+    "sort -n "
     + tmp_dir
-    + "/Travel_Map_Cleaned.csv | uniq > "
+    + "/1_Travel_Map_Cleaned.csv | uniq > "
     + tmp_dir
-    + "/Travel_Map_Sorted.csv"
+    + "/2_Travel_Map_Sorted.csv"
 )
 
 # Split into multiple files
 my_files = []
-with open(tmp_dir + "/Travel_Map_Sorted.csv") as infile:
+with open(tmp_dir + "/2_Travel_Map_Sorted.csv") as infile:
     newfile = None
     for lineno, line in enumerate(infile):
         if lineno >= 0:
@@ -171,7 +211,7 @@ with open(tmp_dir + "/Travel_Map_Sorted.csv") as infile:
                 if newfile:
                     newfile.close()
                 file_num = lineno // lines_per_file + 1
-                new_filename = tmp_dir + "/Travel_Map_p{}.csv".format(file_num)
+                new_filename = tmp_dir + "/3_Travel_Map_p{}.csv".format(file_num)
                 my_files.append(new_filename)
                 newfile = open(new_filename, "w")
             newfile.write(line)
@@ -182,6 +222,7 @@ with open(tmp_dir + "/Travel_Map_Sorted.csv") as infile:
 countOrig = 0
 count = 0
 coordinates = []
+print("")
 
 for filename in my_files:
     coords = []
@@ -225,7 +266,7 @@ for filename in my_files:
 print("")
 
 # Add trimed points to a new file
-with open(tmp_dir + "/Travel_Map_Trimmed.csv", mode="w") as outfile:
+with open(tmp_dir + "/4_Travel_Map_Trimmed.csv", mode="w") as outfile:
     outfile.write("Latitude,Longitude\n")
     for pairs in coordinates:
         outfile.write(f"{pairs[0]},{pairs[1]}\n")
@@ -233,7 +274,7 @@ with open(tmp_dir + "/Travel_Map_Trimmed.csv", mode="w") as outfile:
 # Plot points on an interactive map
 mapbox_access_token = "pk.eyJ1IjoianVub3hkIiwiYSI6ImNqeHR4OWE2ZTAyMHIzbXF2bzR4OTB1bGYifQ.QuzCmekFjzCj5tAVAAJFnA"
 
-source = pd.read_csv(tmp_dir + "/Travel_Map_Trimmed.csv")
+source = pd.read_csv(tmp_dir + "/4_Travel_Map_Trimmed.csv")
 latitude = source.Latitude
 longitude = source.Longitude
 
@@ -259,7 +300,7 @@ layout = go.Layout(
 )
 
 outdir = "./Maps/"
-outfile = outdir + "Travel-Map-" + datetime.now().strftime("%Y-%m-%d-%s")
+outfile = outdir + "Travel-Map-" + timestamp
 latest = "Travel-Map-latest"
 if not os.path.exists(outdir):
     os.mkdir(outdir)
@@ -280,9 +321,9 @@ if os.path.exists(latest + ".png"):
 os.symlink(outfile + ".png", latest + ".png")
 
 # Clear the temporary directory
-shutil.rmtree(tmp_dir)
+# shutil.rmtree(tmp_dir)
 
 
 # benchmarking
-# python3 -m cProfile -o prof.dat 1_split_trim_plot.py
-# python3 -m pstats prof.dat
+# python3 -m cProfile -o /tmp/python.profile ./plot_travel_map.py ~/Takeout/
+# python3 -m pstats /tmp/python.profile
