@@ -14,3 +14,6 @@ done
 
 # Plot all points from sample inputs
 ./plot_travel_map.py tmp/*
+
+# Can also plot everything recursively under a directory
+./plot_travel_map.py ~/Takeout/
