@@ -308,8 +308,10 @@ if not os.path.exists(outdir):
 # Plot everything
 fig = go.Figure(data=data, layout=layout)
 py.offline.plot(fig, filename=outfile + ".html")
-fig.write_image(outfile + ".png", height=1200, width=1450)
-fig.write_image(outfile + ".square.png", height=1450, width=1450)
+fig.write_image(outfile + ".small.png", height=1200, width=1450)
+fig.write_image(outfile + ".small.square.png", height=1450, width=1450)
+
+fig.write_image(outfile + ".png", height=3600, width=4350)
 
 # Update symlink
 if os.path.exists(latest + ".html"):
