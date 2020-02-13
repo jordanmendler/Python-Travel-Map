@@ -46,10 +46,13 @@ def updateConsole(f, fileCount, numFiles, skipped, invalidCount, validCount):
 timestamp = datetime.now().strftime("%Y-%m-%d-%s")
 
 # Split sorted files into smaller files with no more than 100000 lines each
-lines_per_file = 10000
+LINES_PER_FILE = 10000
 
 # Maximum decimal places
 PRECISION = 7
+
+# Maximum distance between points (smaller number is more dense and also slower)
+DISTANCE = 0.5
 
 # Make a cache directory
 tmp_dir = str(tempfile.mkdtemp(".tmp", "travel-map-" + timestamp + "-"))
@@ -241,10 +244,10 @@ with open(tmp_dir + "/1_Travel_Map_Cleaned.csv") as infile:
     newfile = None
     for lineno, line in enumerate(infile):
         if lineno >= 0:
-            if lineno % lines_per_file == 0:
+            if lineno % LINES_PER_FILE == 0:
                 if newfile:
                     newfile.close()
-                file_num = lineno // lines_per_file + 1
+                file_num = lineno // LINES_PER_FILE + 1
                 new_filename = tmp_dir + "/2_Travel_Map_p{}.csv".format(file_num)
                 my_files.append(new_filename)
                 newfile = open(new_filename, "w")
@@ -284,7 +287,7 @@ for filename in my_files:
                     yy = lng1 - lng0
                     if x < 0.01 and x > -0.01 and yy < 0.05 and yy > -0.05:
                         y = (yy) * math.cos(lat0)
-                        if deglen * math.sqrt(x * x + y * y) < 0.5:
+                        if deglen * math.sqrt(x * x + y * y) < DISTANCE:
                             add = False
                             break
                 if add:
@@ -292,7 +295,7 @@ for filename in my_files:
                     count += 1
 
             countOrig += 1
-            if countOrig % lines_per_file == 0:
+            if countOrig % 10000 == 0:
                 sys.stdout.write("\33[2K")
                 sys.stdout.write(
                     "\rStep 3: Trimmed %d Coordinates to %d\t(file %d of %d)"
@@ -303,14 +306,16 @@ for filename in my_files:
     coordinates = coordinates + coords
 
 # Add trimed points to a new file
-print("\nStep 4: Visualization")
+print("\nStep 4: Visualizing")
 with open(tmp_dir + "/3_Travel_Map_Trimmed.csv", mode="w") as outfile:
     outfile.write("Latitude,Longitude\n")
     for pairs in coordinates:
         outfile.write(f"{pairs[0]},{pairs[1]}\n")
 
 # Plot points on an interactive map
-mapbox_access_token = "pk.eyJ1IjoianVub3hkIiwiYSI6ImNqeHR4OWE2ZTAyMHIzbXF2bzR4OTB1bGYifQ.QuzCmekFjzCj5tAVAAJFnA"
+# mapbox_access_token = "pk.eyJ1IjoianVub3hkIiwiYSI6ImNqeHR4OWE2ZTAyMHIzbXF2bzR4OTB1bGYifQ.QuzCmekFjzCj5tAVAAJFnA"
+mapbox_access_token = "pk.eyJ1Ijoiam9yZGFubWVuZGxlciIsImEiOiJjazZrY3Bxc2MwMnl5M2txdG04c2RxaDFjIn0.8I5q914F_kd2Trou3szHxQ"
+base_map = "mapbox://styles/jordanmendler/ck6kcx6380pf01ipboyaoa2ev"
 
 source = pd.read_csv(tmp_dir + "/3_Travel_Map_Trimmed.csv")
 latitude = source.Latitude
@@ -321,7 +326,7 @@ data = [
         lat=latitude,
         lon=longitude,
         mode="markers",
-        marker=go.scattermapbox.Marker(size=9),
+        marker=go.scattermapbox.Marker(color="rgb(0, 168, 107)", size=9),
     )
 ]
 layout = go.Layout(
@@ -330,6 +335,7 @@ layout = go.Layout(
     hovermode="closest",
     mapbox=go.layout.Mapbox(
         accesstoken=mapbox_access_token,
+        style=base_map,
         bearing=0,
         center=go.layout.mapbox.Center(lat=45, lon=10),
         pitch=0,
