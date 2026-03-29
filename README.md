@@ -3,6 +3,7 @@
 # Install dependences: Note that it must be electron@1.8.4 and not just latest
 # version of electron or else Orca breaks
 npm install -g electron@1.8.4 orca
+
 pip3 install --user orca psutil requests plotly pandas
 
 # Extract sample inputs
